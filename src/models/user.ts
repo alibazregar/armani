@@ -3,6 +3,7 @@ import { Schema, model } from "mongoose";
 export interface IUser {
   firstName?: string;
   lastName?: string;
+  isAdmin: boolean;
   phone: number;
   email?: string;
   loginAttempts:number;
@@ -15,6 +16,7 @@ const userSchema = new Schema<IUser>({
   email: { type: String },
   loginAttempts: { type: Number, default: 0 },
   lastLoginAttempt: { type: Date, default: null },
+  isAdmin : { type: Boolean, default: false}
 });
 const User = model<IUser>("User", userSchema);
 export default User;

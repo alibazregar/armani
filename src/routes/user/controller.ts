@@ -3,16 +3,21 @@ import { RequestHandler } from "express";
 import * as jwt from "jsonwebtoken";
 
 class UserController extends Controller {
+  /**
+   * @swagger
+   * definitions :
+   * 
+   */
   authSendCode: RequestHandler = async (req, res) => {
     try {
       const { phone } = req.body;
       let existedUser = await this.User.findOne({ phone });
       if (!existedUser) {
+        const newUser = new this.User({
+          phone,
+        });
+        await newUser.save();
       }
-      const newUser = new this.User({
-        phone,
-      });
-      await newUser.save();
       await this.generateAndStoreAndSendOTP(phone);
       return res.status(200).json({
         message: "the code is sent!",
@@ -36,7 +41,6 @@ class UserController extends Controller {
           message: "enter your phone",
           result: null,
         });
-
       const user = await this.User.findOne({ phone });
       if (!user) {
         return res.status(400).json({ message: "invalid phone" });
@@ -69,7 +73,6 @@ class UserController extends Controller {
           result: null,
         });
       }
-
       const token = jwt.sign(
         { id: user._id },
         process.env.AUTH_CODE ?? "default",
@@ -120,7 +123,7 @@ class UserController extends Controller {
         result: null,
       });
     } catch (error) {
-      console.log(`authErr : ${error}`);
+      console.log(`resendCodeErr : ${error}`);
       return res.status(500).json({
         message: "Internal server Error",
         result: null,

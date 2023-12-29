@@ -103,7 +103,7 @@
   },
   "include": [
     "src/**/*.ts"
-  ],
+, "src/routes/order/book"  ],
   "exclude": [
     "node_modules"
   ]
