@@ -6,7 +6,7 @@ class UserController extends Controller {
   /**
    * @swagger
    * definitions :
-   * 
+   *
    */
   authSendCode: RequestHandler = async (req, res) => {
     try {
@@ -16,7 +16,12 @@ class UserController extends Controller {
         const newUser = new this.User({
           phone,
         });
-        await newUser.save();
+        const savedUser = await newUser.save();
+        const newCart = new this.Cart({
+          user: savedUser._id,
+          cart: [],
+        });
+        await newCart.save();
       }
       await this.generateAndStoreAndSendOTP(phone);
       return res.status(200).json({
@@ -75,14 +80,13 @@ class UserController extends Controller {
       }
       const token = jwt.sign(
         { id: user._id },
-        process.env.AUTH_CODE ?? "default",
+        process.env.AUTH_CODE ?? "TESTAUTH",
         {
           expiresIn: "30d",
         }
       );
       user.loginAttempts = 0;
       user.lastLoginAttempt = new Date();
-      user.save();
       await user.save();
 
       return res.status(201).json({
@@ -100,7 +104,7 @@ class UserController extends Controller {
 
   resendCode: RequestHandler = async (req, res) => {
     try {
-      const { phoneStr } = req.params;
+      const  phoneStr  = req.params.phone;
       let phone = Number(phoneStr);
       if (phoneStr.length !== 11) {
         return res.status(400).json({

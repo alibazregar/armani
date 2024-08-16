@@ -1,54 +1,57 @@
 import { Schema, model } from "mongoose";
-import { IBookOrder } from "./bookOrder";
 import { IUser } from "./user";
-import { IOtherOrder } from "./otherOrders";
+import { IAddress } from "./address";
 
 export interface IOrder {
   user: IUser;
-  type: IBookOrder | IOtherOrder;
-  itemType: "BookOrder" | "OtherOrder";
-  media: { path: string }[];
-  number: string;
-  address: string;
-  postCode: number;
+  products: Record<string, any>;
+  address: IAddress;
+  postType: "normal" | "pishtaz" | "peyk" | "nothing";
   totalPrice: number;
   status: string;
   postPrice: number;
-  res_number : string;
+  res_number: string;
   description: string;
+  trackingId: number;
+  createdAt: Date; // Added createdAt field
+  updatedAt: Date; // Added updatedAt field
 }
 
-const OrderSchema = new Schema<IOrder>({
-  user: { type: Schema.Types.ObjectId, ref: "User" , required: true},
-  type: {
-    type: Schema.Types.ObjectId,
-    refPath: "itemType",
-    required: true,
-  },
-  itemType: {
-    type: String,
-    enum: ["BookOrder", "OtherOrder"],required: true,
-  },
-  media: [
-    {
-      path: {
-        type: String,
+const OrderSchema = new Schema<IOrder>(
+  {
+    user: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    products: [
+      {
+        product: Schema.Types.Mixed,
+        status: {
+          type: String,
+          enum: ["preparing", "new", "sent", "sending","rejected"],
+          default: "new",
+          required: true,
+        },
       },
+    ],
+    address: { type: Schema.Types.ObjectId, ref: "Address", required: true },
+    postType: {
+      type: String,
+      enum: ["normal", "pishtaz", "peyk", "nothing"],
+      required: true,
     },
-  ],
-  address: { type: String, required: true },
-  postCode: { type: Number, required: true },
-  totalPrice: { type: Number, required: true },
-  postPrice: { type: Number, required: true },
-  status: {
-    type: String,
-    enum: ["pending", "paid", "expired", "sent", "sending", "preparing"],
-    required: true,
-    default: "pending",
+    totalPrice: { type: Number, required: true },
+    postPrice: { type: Number, required: true },
+    status: {
+      type: String,
+      enum: ["pending", "paid","expired"],
+      required: true,
+      default: "pending",
+    },
+    res_number: { type: String, required: true },
+    description: { type: String },
+    trackingId: { type: Number, unique: true },
   },
-  res_number : {type: String, required: true},
-  description : {type: String }
-});
-
+  {
+    timestamps: true, // Automatically add createdAt and updatedAt fields
+  }
+);
 const Order = model<IOrder>("Order", OrderSchema);
 export default Order;

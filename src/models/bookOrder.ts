@@ -1,11 +1,16 @@
 import { Schema, model, Model } from "mongoose";
-import { ISize } from "./size";
-import { IPaperType } from "./paper/paperType";
-import { IPaperColor } from "./paper/paperColor";
-import { ICoverType } from "./coverType";
-import { IBindingType } from "./BindingType";
+import { ISize } from "./attributes/size";
+import { IPaperType } from "./attributes/paper/paperType";
+import { IPaperColor } from "./attributes/paper/paperColor";
+import { ICoverType } from "./attributes/coverType";
+import { IBindingType } from "./attributes/BindingType";
 import { getConfigValueByKey } from "./config";
-
+import Size from "./attributes/size";
+import PaperType from "./attributes/paper/paperType";
+import PaperColor from "./attributes/paper/paperColor";
+import CoverType from "./attributes/coverType";
+import BindingType from "./attributes/BindingType";
+import { ICoverPaper } from "./attributes/coverPaper";
 export interface IBookOrder {
   title: string;
   size: ISize;
@@ -15,12 +20,15 @@ export interface IBookOrder {
     color: IPaperColor;
   };
   cover: {
+    paper: ICoverPaper;
     type: ICoverType;
     binding: IBindingType;
     bindingFaces: string;
     filePath: string;
+    bindingWay: string;
+    bindingLanguage: string;
   };
-  calculatePrice(number: number): Promise<number>;
+  calculatePrice?(type: string): Promise<number>;
 }
 
 interface IBookOrderModel extends Model<IBookOrder> {
@@ -28,7 +36,7 @@ interface IBookOrderModel extends Model<IBookOrder> {
 }
 
 const BookOrderSchema = new Schema<IBookOrder, IBookOrderModel>({
-  title: { type: String, required: true },
+  title: { type: String },
   size: { type: Schema.Types.ObjectId, required: true, ref: "Size" },
   paper: {
     type: { type: Schema.Types.ObjectId, required: true, ref: "PaperType" },
@@ -36,55 +44,63 @@ const BookOrderSchema = new Schema<IBookOrder, IBookOrderModel>({
     number: { type: Number, required: true },
   },
   cover: {
-    type: { type: Schema.Types.ObjectId, required: true, ref: "CoverType" },
+    type: { type: Schema.Types.ObjectId, ref: "CoverType" },
     binding: {
       type: Schema.Types.ObjectId,
-      required: true,
       ref: "BindingType",
+    },
+    paper: {
+      type: Schema.Types.ObjectId,
+      ref: "CoverPaper",
     },
     bindingFaces: {
       type: String,
       values: ["oneFace", "twoFace"],
-      required: true,
     },
     filePath: {
       type: String,
-      required: true,
     },
+    bindingLanguage: { type: String },
+    bindingWay: { type: String },
   },
 });
 
 BookOrderSchema.methods.calculatePrice = async function (
   number: number
 ): Promise<number> {
-  // Populate the necessary fields
-  await this.populate(
-    "size paper.type paper.color cover.type cover.binding"
-  ).execPopulate();
-
-  const size = this.size.toJSON() as ISize;
-  const paperType = this.paper.type.toJSON() as IPaperType;
-  const paperColor = this.paper.color.toJSON() as IPaperColor;
-  const coverType = this.cover.type.toJSON() as ICoverType;
-  const bindingType = this.cover.binding.toJSON() as IBindingType;
-
-  // Your existing logic for calculating price
-  const paperPrice = ((await getConfigValueByKey("PaperBasePrice")) *
-    size.ratio *
-    paperType.ratio *
-    paperColor.ratio *
+  // Check validity of attributes
+  if (
+    this.size.type !== "book" ||
+    (this.cover.binding.type !== "book" && this.cover.type.type !== "book")
+  ) {
+    throw new Error("Invalid attributes");
+  }
+  // Calculate paper price
+  const paperPrice = (this.size.ratio *
+    this.paper.type.ratio *
+    this.paper.color.ratio *
     this.paper.number) as number;
-
-  const bindingFaceRatio: number =
-    this.cover.bindingFaces == "oneFace"
-      ? bindingType.ratioForOne
-      : bindingType.ratioForBoth;
-  const coverPrice =
-    (await getConfigValueByKey("coverPrice")) *
-    bindingFaceRatio *
-    coverType.ratio;
-
-  return Promise.resolve(paperPrice * coverPrice * number);
+  let bindingFaceRatio;
+  if (!this.cover.bindingFaces?.ratio || !this.cover.binding?.ratioForOne) {
+    bindingFaceRatio = 1;
+  } else {
+    bindingFaceRatio =
+      this.cover.bindingFaces === "oneFace"
+        ? this.cover.binding?.ratioForOne
+        : this.cover.binding?.ratioForBoth;
+  }
+  // Determine binding face ratio
+  // Calculate cover price
+  let coverPrice;
+  if (this.cover.type?.ratio && this.cover.paper?.ratio) {
+    coverPrice =
+      bindingFaceRatio + this.cover.type?.ratio * this.cover.paper?.ratio;
+  } else {
+    coverPrice = 0;
+  }
+  // Calculate total price
+  const totalPrice = (paperPrice + coverPrice) * number;
+  return totalPrice;
 };
 
 const BookOrder = model<IBookOrder, IBookOrderModel>(

@@ -7,14 +7,14 @@ function generateRandomString(length: number) {
   return crypto.randomBytes(length).toString("hex");
 }
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
+  destination: (_, __, cb) => {
     const uploadDir = "./public/covers";
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir);
     }
     cb(null, uploadDir);
   },
-  filename: function (req, file, cb) {
+  filename: function (_, file, cb) {
     cb(
       null,
       file.fieldname +
@@ -29,7 +29,7 @@ const storage = multer.diskStorage({
 const upload = multer({
   storage: storage,
   limits: { fileSize: 100 * 1024 * 1024 }, // 100 mb
-  fileFilter: function (req, file, cb) {
+  fileFilter: function (_, file, cb) {
     const filetypes = /jpeg|jpg|png|pdf|tiff|tif/;
     const extname = filetypes.test(
       path.extname(file.originalname).toLowerCase()
@@ -42,7 +42,7 @@ const upload = multer({
       cb(new multer.MulterError("INVALID_FILE_TYPE"));
     }
   },
-}).array("files");
+}).single("cover");
 
 const uploadCover: RequestHandler = (req, res, next) => {
   upload(req, res, (err): any => {

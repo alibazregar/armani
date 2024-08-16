@@ -1,0 +1,17 @@
+{
+    "platform": "node",
+    "app": "armani",
+    "port": 3000,
+    "node": {
+        "version": "18"
+    },
+        "disks": [
+          {
+            "name": "public",
+            "mountTo": "public"
+          }
+
+        ]
+    
+
+}

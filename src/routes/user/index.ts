@@ -1,25 +1,29 @@
 import { Router } from "express";
 const router = Router();
 import userController from "./controller";
+import User from "../../models/user";
+import { checkLogin } from "./../../middleware/checkLogin";
+import address from "./address";
+import ticketRouter from "./ticket";
 /**
  * @swagger
- * /api/v1/user//send-otp:
+ * /api/v1/user/send-otp:
  *   post:
  *     summary: Send authentication code to the user's phone number.
  *     description: |
  *       This endpoint sends an authentication code to the user's phone number.
  *       If the user doesn't exist, a new user is created with the provided phone number.
- *     parameters:
- *       - in: body
- *         name: body
- *         required: true
- *         description: The request body containing the user's phone number.
- *         schema:
- *           type: object
- *           properties:
- *             phone:
- *               type: string
- *               description: The user's phone number.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               phone:
+ *                 type: string
+ *                 description: User's phone
+ *                 example: 09303294693
  *     responses:
  *       200:
  *         description: The authentication code is sent successfully.
@@ -53,20 +57,20 @@ router.post("/send-otp", userController.authSendCode);
  *     description: |
  *       This endpoint authenticates the user using their phone number and OTP code.
  *       After successful authentication, a JWT token is generated for further access.
- *     parameters:
- *       - in: body
- *         name: body
- *         required: true
- *         description: The request body containing the user's phone number and OTP code.
- *         schema:
- *           type: object
- *           properties:
- *             phone:
- *               type: string
- *               description: The user's phone number.
- *             code:
- *               type: string
- *               description: The OTP code entered by the user.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               phone:
+ *                 type: string
+ *                 description: User's phone
+ *                 example: 09303294693
+ *               code:
+ *                 type: string
+ *                 description: The OTP code entered by the user.
  *     responses:
  *       201:
  *         description: Login was successful, and a JWT token is generated.
@@ -113,8 +117,8 @@ router.post("/send-otp", userController.authSendCode);
 router.post("/auth", userController.auth);
 /**
  * @swagger
- * /api/v1/user/resendCode:/{phoneStr}:
- *   get:
+ * /api/v1/user/resend-code/{phoneStr}:
+ *   post:
  *     summary: Resend authentication code to the user's phone number.
  *     description: |
  *       This endpoint resends an authentication code to the user's phone number.
@@ -173,6 +177,20 @@ router.post("/auth", userController.auth);
  *               type: null
  *               description: Result is null in case of an internal server error.
  */
-router.post("/resend-code/phone", userController.resendCode);
-
+router.post("/resend-code/:phone", userController.resendCode);
+router.get("/mine", checkLogin, (req, res) => {
+  return res.json(req.user ?? {});
+});
+router.put("/mine", checkLogin, async (req, res) => {
+  let { email, firstName, lastName } = req.body;
+  //@ts-ignore
+   let user = await User.findByIdAndUpdate(req.user._id, {
+    email: email,
+    firstName: firstName,
+    lastName: lastName,
+  });
+  return res.status(200).json(user);
+});
+router.use("/address", address);
+router.use("/ticket",checkLogin,ticketRouter)
 export default router;

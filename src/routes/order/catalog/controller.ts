@@ -1,16 +1,16 @@
-import BindingType from "../../../models/BindingType";
+import BindingType from "../../../models/attributes/BindingType";
 import orderController from "../controller";
 import { RequestHandler } from "express";
 import { Response, NextFunction } from "express";
+import mongoose from "mongoose";
 class CatalogController extends orderController {
-  payCatalogPrice = async (
+  addCatalogToCart = async (
     req: CustomRequest,
     res: Response,
     next: NextFunction
   ): Promise<void | Response> => {
     try {
       const {
-        number,
         title,
         sizeId,
         paperTypeId,
@@ -18,32 +18,36 @@ class CatalogController extends orderController {
         paperNumber,
         coverTypeId,
         bindingTypeId,
-        bindingOnPrint
+        onPrintId,
+        bindingFaces,
+        coverColor,
       } = req.body;
-      if(!req.file?.path){
-        return res.status(500).send("error")
-      }
       const catalogOrder = new this.CatalogOrder({
         title: title,
-        size:sizeId,
-        paper : {
-          type : paperTypeId,
-          number :paperNumber,
-          color : paperColorId
+        size: sizeId,
+        paper: {
+          type: paperTypeId,
+          number: paperNumber,
+          color: paperColorId,
         },
-        cover :{
-          type : coverTypeId,
-         filePath : req.file?.path,
+        cover: {
+          color: coverColor,
+          type: coverTypeId,
+          bindingFaces: bindingFaces,
+          //@ts-ignore
+          filePath : process.env.BASE_URL + req.files?.cover[0].path,
         },
-        binding : bindingTypeId ,
-        onPrint : bindingOnPrint
-      })
+        binding: bindingTypeId,
+        onPrint: onPrintId,
+      });
       const saved = await catalogOrder.save();
-      req.savedOrder = saved;
+      req.savedOrder = saved._id.toString();
       req.orderType = "CatalogOrder";
-      req.price = await catalogOrder.calculatePrice(number);
       next();
     } catch (error) {
+      if (error instanceof mongoose.Error.ValidationError) {
+        return res.status(400).json({ error: error.message });
+      }
       console.log(`authSendCodeErr : ${error}`);
       return res.status(500).json({
         message: "Internal server Error",
@@ -61,9 +65,12 @@ class CatalogController extends orderController {
         paperColorId,
         paperNumber,
         coverTypeId,
-        bindingFacesId,
+        onPrintId,
+        bindingTypeId,
+        coverColor,
+        bindingFaces,
       } = req.body;
-      const bookOrder = new this.BookOrder({
+      const catalogOrder = new this.CatalogOrder({
         title: title,
         size: sizeId,
         paper: {
@@ -71,19 +78,39 @@ class CatalogController extends orderController {
           number: paperNumber,
           color: paperColorId,
         },
+        binding: bindingTypeId,
         cover: {
           type: coverTypeId,
-          binding: BindingType,
-          bindingFaces: bindingFacesId,
+          color: coverColor,
+          bindingFaces: bindingFaces,
         },
+        onPrint: onPrintId,
       });
+      const saved = await catalogOrder.save();
+      const savedWithPopulate = await this.CatalogOrder.findById(
+        saved._id
+      ).populate([
+        "onPrint",
+        "size",
+        "paper.type",
+        "paper.color",
+        "binding",
+        "cover.type",
+      ]);
+      if (!savedWithPopulate?.calculatePrice) {
+        throw new Error("problem");
+      }
       try {
-        const fullPrice = bookOrder.calculatePrice(number);
+        const fullPrice = await savedWithPopulate?.calculatePrice(number);
+        await this.CatalogOrder.findByIdAndDelete(saved._id);
         return res.status(200).json({ price: fullPrice });
       } catch (err: any) {
         return res.status(400).json({ error: err.message });
       }
     } catch (error) {
+      if (error instanceof mongoose.Error.ValidationError) {
+        return res.status(400).json({ error: error.message });
+      }
       console.log(`getBookPriceErr : ${error}`);
       return res.status(500).json({
         message: "Internal server Error",

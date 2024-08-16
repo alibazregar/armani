@@ -1,11 +1,11 @@
 import { Schema, model, Model } from "mongoose";
 import { getConfigValueByKey } from "./config";
-import { ISize } from "./size";
-import { IPaperType } from "./paper/paperType";
-import { IPaperColor } from "./paper/paperColor";
-import { ICoverType } from "./coverType";
-import { IBindingType } from "./BindingType";
-import { IBrochureOnPrint } from "./brochureAttr/brochureOnPrint";
+import { ISize } from "./attributes/size";
+import { IPaperType } from "./attributes/paper/paperType";
+import { IPaperColor } from "./attributes/paper/paperColor";
+import { ICoverType } from "./attributes/coverType";
+import { IBindingType } from "./attributes/BindingType";
+import { IOnPrint } from "./attributes/onPrint";
 export interface ICatalogOrder {
   title: string;
   size: ISize;
@@ -16,24 +16,24 @@ export interface ICatalogOrder {
   };
   cover: {
     type: ICoverType;
-
-    filePath: string;
+    filePath?: string;
+    color: string;
+    bindingFaces: string;
   };
   binding: IBindingType;
-  onPrint: IBrochureOnPrint;
+  onPrint: IOnPrint;
   calculatePrice?(type: string): Promise<number>;
 }
 interface ICatalogOrderModel extends Model<ICatalogOrder> {
   calculatePrice(type: string): Promise<number>;
 }
-
 const CatalogOrderSchema = new Schema<ICatalogOrder, ICatalogOrderModel>({
-  title: { type: String, required: true },
+  title: { type: String },
   size: { type: Schema.Types.ObjectId, required: true, ref: "Size" },
   onPrint: {
     type: Schema.Types.ObjectId,
     required: true,
-    ref: "BrochureOnPrint",
+    ref: "OnPrint",
   },
   paper: {
     type: { type: Schema.Types.ObjectId, required: true, ref: "PaperType" },
@@ -47,7 +47,7 @@ const CatalogOrderSchema = new Schema<ICatalogOrder, ICatalogOrderModel>({
   },
   cover: {
     type: { type: Schema.Types.ObjectId, required: true, ref: "CoverType" },
-
+    color: { type: String },
     bindingFaces: {
       type: String,
       values: ["oneFace", "twoFace"],
@@ -55,7 +55,6 @@ const CatalogOrderSchema = new Schema<ICatalogOrder, ICatalogOrderModel>({
     },
     filePath: {
       type: String,
-      required: true,
     },
   },
 });
@@ -64,24 +63,28 @@ CatalogOrderSchema.methods.calculatePrice = async function (
   number: number
 ): Promise<number> {
   // Populate the necessary fields
-  await this.populate("material", "onPrint", "size").execPopulate();
   const size = this.size.toJSON() as ISize;
   const paperType = this.paper.type.toJSON() as IPaperType;
   const paperColor = this.paper.color.toJSON() as IPaperColor;
   const coverType = this.cover.type.toJSON() as ICoverType;
   const bindingType = this.binding.toJSON() as IBindingType;
-  const onPrint = this.onPrint.toJSON() as IBrochureOnPrint;
-  const bindingFaceRatio = this.cover.bindingFaces.ratio;
+  const onPrint = this.onPrint.toJSON() as IOnPrint;
+
+  if (
+    size.type != "catalog" ||
+    coverType.type != "catalog" ||
+    bindingType.type != "catalog" ||
+    onPrint.type != "catalog" ||
+    coverType.type != "catalog"
+  ) {
+    throw new Error("invalid attributes");
+  }
   const bindingTypeI: number =
     this.cover.bindingFaces == "oneFace"
       ? bindingType.ratioForOne
       : bindingType.ratioForBoth;
   const coverPrice =
-    coverType.ratio *
-    onPrint.ratio *
-    bindingFaceRatio *
-    bindingTypeI *
-    coverType.ratio;
+    coverType.ratio * onPrint.ratio * bindingTypeI * coverType.ratio;
   const paperNumber = this.paper.number;
   // Your existing logic for calculating price
   const paperPrice = paperType.ratio * paperNumber * paperColor.ratio;
@@ -89,10 +92,9 @@ CatalogOrderSchema.methods.calculatePrice = async function (
     (await getConfigValueByKey("CatalogBasePrice")) *
     size.ratio *
     (paperPrice + coverPrice);
-
+  console.log(coverPrice, paperPrice, catalogPrice, paperNumber, catalogPrice);
   return Promise.resolve(catalogPrice * number);
 };
-
 const CatalogOrder = model<ICatalogOrder, ICatalogOrderModel>(
   "CatalogOrder",
   CatalogOrderSchema

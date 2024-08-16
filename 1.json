@@ -1,0 +1,11 @@
+{
+  "$type": "clientcomponent",
+  "core": "clientcomponent",
+  "run": "atclient",
+  "extra-attribute": {
+    "inventorysource": "db.anbar1",
+    "localstoragesource": "local.basket",
+    "basket-result-id": "db.Listchoices1"
+  },
+  "_core": "component.local.ListOfChoices"
+}

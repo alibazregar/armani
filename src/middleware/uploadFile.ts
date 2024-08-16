@@ -3,24 +3,25 @@ import path from "path";
 import fs from "fs";
 import { RequestHandler } from "express";
 import crypto from "crypto";
-function generateRandomString(length:number) {
-  return crypto.randomBytes(length).toString('hex');
+function generateRandomString(length: number) {
+  return crypto.randomBytes(length).toString("hex");
 }
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
+  destination: (_, __, cb) => {
     const uploadDir = "./public/userUploads";
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir);
     }
     cb(null, uploadDir);
   },
-  filename: function (req, file, cb) {
+  filename: function (_, file, cb) {
     cb(
       null,
       file.fieldname +
-        "_" + generateRandomString(7)+
+        "_" +
+        generateRandomString(7) +
         new Date().toISOString().replace(/:/g, "-") +
-        path.extname(file.originalname)
+        path.extname(file.originalname) 
     );
   },
 });
@@ -28,7 +29,7 @@ const storage = multer.diskStorage({
 const upload = multer({
   storage: storage,
   limits: { fileSize: 100 * 1024 * 1024 }, // 100 mb
-  fileFilter: function (req, file, cb) {
+  fileFilter: function (_, file, cb) {
     const filetypes = /jpeg|jpg|png|pdf|tiff|tif/;
     const extname = filetypes.test(
       path.extname(file.originalname).toLowerCase()
@@ -41,7 +42,16 @@ const upload = multer({
       cb(new multer.MulterError("INVALID_FILE_TYPE"));
     }
   },
-}).array("files");
+}).fields([
+  {
+    name: "files",
+    maxCount: 10,
+  },
+  {
+    name: "cover",
+    maxCount: 1,
+  },
+]);
 
 const uploadFile: RequestHandler = (req, res, next) => {
   upload(req, res, (err): any => {
@@ -50,19 +60,22 @@ const uploadFile: RequestHandler = (req, res, next) => {
         return res.status(400).send({ message: "the file is too large" });
       }
       if (err.code === "INVALID_FILE_TYPE") {
-        return res
-          .status(400)
-          .send({ message: "invalid file type ; the file should be jpg jpeg png tif tiff or pdf" });
+        return res.status(400).send({
+          message:
+            "invalid file type ; the file should be jpg jpeg png tif tiff or pdf",
+        });
       }
       console.log("uploadErr:" + err.stack);
       return res
         .status(400)
         .send({ message: "unexpected upload error; try again later" });
     }
-    if(!req.files || req.files.length==0){
-        return res.status(400).send({ message: "you should upload at least one file" })
+    if (!req.files || req.files.length == 0) {
+      return res
+        .status(400)
+        .send({ message: "you should upload at least one file" });
     }
     next();
   });
 };
-export default uploadFile
+export default uploadFile;

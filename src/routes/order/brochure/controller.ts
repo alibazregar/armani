@@ -1,17 +1,16 @@
 import orderController from "../controller";
 import { RequestHandler } from "express";
 import { Response, NextFunction } from "express";
-import BrochureMaterial from "../../../models/brochureAttr/brochureMaterial";
-import BrochureOnPrint from "../../../models/brochureAttr/brochureOnPrint";
+import BrochureMaterial from "../../../models/attributes/material";
+import BrochureOnPrint from "../../../models/attributes/onPrint";
 class BrochureController extends orderController {
-  payBrochurePrice = async (
+  addBrochureToCart = async (
     req: CustomRequest,
     res: Response,
     next: NextFunction
   ): Promise<void | Response> => {
     try {
       const {
-        number,
         title,
         materialId,
         onPaperId,
@@ -26,9 +25,8 @@ class BrochureController extends orderController {
         afterPrintServices: afterPrintServices,
       });
       const saved = await brochureOrder.save();
-      req.savedOrder = saved;
+      req.savedOrder = saved._id.toString();
       req.orderType = "BrochureOrder";
-      req.price = await brochureOrder.calculatePrice(number);
       next();
     } catch (error) {
       console.log(`authSendCodeErr : ${error}`);
@@ -55,8 +53,13 @@ class BrochureController extends orderController {
         size: sizeId,
         afterPrintServices: afterPrintServices,
       });
+      const saved = await brochureOrder.save()
+      const savedWithPopulate = await this.BrochureOrder.findById(saved._id).populate(["material", "onPrint", "size"]);
+      if(!savedWithPopulate?.calculatePrice){
+        throw new Error("problem")
+      }
       try {
-        const fullPrice = brochureOrder.calculatePrice(number);
+        const fullPrice = await savedWithPopulate?.calculatePrice(number);
         return res.status(200).json({ price: fullPrice });
       } catch (err: any) {
         return res.status(400).json({ error: err.message });

@@ -14,6 +14,7 @@ const configSchema = new Schema<IConfig>(
 );
 
 const Config = mongoose.model<IConfig>('Config', configSchema);
+export default Config;
 export async function getConfigValueByKey(key: string): Promise<number> {
     try {
       const configEntry = await Config.findOne({ key });

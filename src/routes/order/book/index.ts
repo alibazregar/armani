@@ -3,17 +3,17 @@ import uploadFile from "../../../middleware/uploadFile";
 import uploadCover from "../../../middleware/uploadCover";
 const router = Router();
 import bookController from "./controller";
-import { checkLogin } from "../../../middleware/checkLogin";
-router.get("/price", checkLogin, bookController.getBookPrice);
+import { checkLogin, isAdmin } from "../../../middleware/checkLogin";
+router.post("/price", bookController.getBookPrice);
 
 router.post(
   "/create-order",
   checkLogin,
+
   uploadFile,
-  uploadCover,
   //@ts-ignore
   bookController.payBookPrice,
-  bookController.createOrderAndPayment
+  bookController.addToCart
 );
 /**
  * @swagger
@@ -27,16 +27,21 @@ router.post(
  *         description: ID of the binding type to retrieve (optional)
  *         schema:
  *           type: string
+ *       - in: query
+ *         name: type
+ *         description: type (values all orders)
+ *         schema:
+ *           type: string
  *     responses:
  *       200:
  *         description: Successful response
  *         content:
  *           application/json:
  *             example:
- *               result: {" _id" : mongoid ," name" : "example", "ratio" :1.3}
- *               results: [{" _id ": mongoid , "name" : "example"," ratio" :1.3},{" _id" : mongoid ," name" : "example2", "ratio" :1.4}]
+ *               result: {"_id": "mongoid", "name": "example", "ratio": 1.3}
+ *               results: [{"_id": "mongoid", "name": "example", "ratio": 1.3}, {"_id": "mongoid", "name": "example2", "ratio": 1.4}]
  */
-router.get("/binding-types",bookController.getBindingTypes)
+router.get("/binding-types", bookController.getBindingTypes);
 /**
  * @swagger
  * /api/v1/order/book/cover-types:
@@ -49,6 +54,11 @@ router.get("/binding-types",bookController.getBindingTypes)
  *         description: ID of the cover type to retrieve (optional)
  *         schema:
  *           type: string
+ *       - in : query
+ *         name : type
+ *         description : type (values all orders)(optional)
+ *         schema :
+ *           type : string
  *     responses:
  *       200:
  *         description: Successful response
@@ -58,9 +68,9 @@ router.get("/binding-types",bookController.getBindingTypes)
  *               result: {" _id" : mongoid ," name" : "example", "ratio" :1.3}
  *               results: [{" _id ": mongoid , "name" : "example"," ratio" :1.3},{" _id" : mongoid ," name" : "example2", "ratio" :1.4}]
  */
-router.get("cover-types",bookController.getCoverTypes)
+router.get("cover-types", bookController.getCoverTypes);
 
-router.get("/paper-colors",bookController.getPaperColors)
+router.get("/paper-colors", bookController.getPaperColors);
 /**
  * @swagger
  * /api/v1/order/book/paper-colors:
@@ -73,6 +83,11 @@ router.get("/paper-colors",bookController.getPaperColors)
  *         description: ID of the paper color to retrieve (optional)
  *         schema:
  *           type: string
+ *      - in : query
+ *         name : type
+ *         description : type (values all orders)(optional)
+ *         schema :
+ *           type : string
  *     responses:
  *       200:
  *         description: Successful response
@@ -82,7 +97,7 @@ router.get("/paper-colors",bookController.getPaperColors)
  *               result: {" _id" : mongoid ," name" : "example", "ratio" :1.3}
  *               results: [{" _id ": mongoid , "name" : "example"," ratio" :1.3},{" _id" : mongoid ," name" : "example2", "ratio" :1.4}]
  */
-router.get("/paper-types",bookController.getPaperTypes)
+router.get("/paper-types", bookController.getPaperTypes);
 /**
  * @swagger
  * /api/v1/order/book/paper-types:
@@ -95,6 +110,11 @@ router.get("/paper-types",bookController.getPaperTypes)
  *         description: ID of the paper type to retrieve (optional)
  *         schema:
  *           type: string
+ *       - in : query
+ *         name : type
+ *         description : type (values all orders)(optional)
+ *         schema :
+ *           type : string
  *     responses:
  *       200:
  *         description: Successful response
@@ -104,7 +124,7 @@ router.get("/paper-types",bookController.getPaperTypes)
  *               result: {" _id" : mongoid ," name" : "example", "ratio" :1.3}
  *               results: [{" _id ": mongoid , "name" : "example"," ratio" :1.3},{" _id" : mongoid ," name" : "example2", "ratio" :1.4}]
  */
-router.get("/size",bookController.getSize)
+router.get("/size", bookController.getSize);
 /**
  * @swagger
  * /api/v1/order/book/size:
@@ -117,6 +137,11 @@ router.get("/size",bookController.getSize)
  *         description: ID of the size to retrieve (optional)
  *         schema:
  *           type: string
+ *      - in : query
+ *         name : type
+ *         description : type (values all orders)(optional)
+ *         schema :
+ *           type : string
  *     responses:
  *       200:
  *         description: Successful response
